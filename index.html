@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creative US Map with Distinct Colors</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/svg-with-js.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
+    <style>
+        #map { height: 600px; width: 100%; }
+        .info { padding: 6px 8px; font: 16px/18px 'Georgia', serif; background: rgba(255, 255, 255, 0.9); box-shadow: 0 0 15px rgba(0,0,0,0.2); border-radius: 5px; }
+        .info h4 { margin: 0 0 5px; color: #333; font-weight: bold; }
+        .leaflet-control-layers { background: rgba(255, 255, 255, 0.9); padding: 10px; border-radius: 5px; font-family: 'Georgia', serif; }
+        .leaflet-popup-content { font-family: 'Georgia', serif; font-size: 14px; }
+        .leaflet-control-reset-zoom button { 
+            background: none; 
+            border: none; 
+            color: #708090; 
+            cursor: pointer; 
+            font-size: 20px; 
+            width: 30px; 
+            height: 30px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            transition: color 0.2s; 
+        }
+        .leaflet-control-reset-zoom button:hover { 
+            color: #2F4F4F; 
+        }
+        .radar-chart { width: 200px; height: 200px; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto p-4">
+        <h1 class="text-2xl font-bold mb-4 text-center font-serif">Creative US Map with Distinct Colors</h1>
+        <div id="map"></div>
+    </div>
+
+    <script>
+        // Initialize the map
+        const map = L.map('map').setView([37.8, -96], 4);
+
+        // Add a base tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Theme data for states
+        const stateThemes = {
+            "Maine": { theme: "Maple Leaf", desc: "Crimson leaves fall gently in the crisp New England air" },
+            "New Hampshire": { theme: "Maple Leaf", desc: "Crimson leaves fall gently in the crisp New England air" },
+            "Vermont": { theme: "Maple Leaf", desc: "Crimson leaves fall gently in the crisp New England air" },
+            "Connecticut": { theme: "Maple Leaf", desc: "Crimson leaves fall gently in the crisp New England air" },
+            "Massachusetts": { theme: "Education", desc: "Scholars tread hallowed halls of wisdom and learning" },
+            "Rhode Island": { theme: "Mansion", desc: "Elegant manors shine under Newport’s timeless sun" },
+            "New York": { theme: "Steel Iron", desc: "Forged in steel, the heartbeat of industry echoes" },
+            "New Jersey": { theme: "Steel Iron", desc: "Forged in steel, the heartbeat of industry echoes" },
+            "Pennsylvania": { theme: "Steel Iron", desc: "Forged in steel, the heartbeat of industry echoes" },
+            "Michigan": { theme: "Steel Iron", desc: "Forged in steel, the heartbeat of industry echoes" },
+            "Ohio": { theme: "Steel Iron", desc: "Forged in steel, the heartbeat of industry echoes" },
+            "Delaware": { theme: "Steel Iron", desc: "Forged in steel, the heartbeat of industry echoes" },
+            "Maryland": { theme: "Harbor", desc: "Teal waves lap at Chesapeake’s bustling harbors" },
+            "District of Columbia": { theme: "Embassy", desc: "Silver emblems gleam over diplomatic crossroads" },
+            "Virginia": { theme: "Slave", desc: "Echoes of history whisper through somber fields" },
+            "West Virginia": { theme: "Mountain and Water", desc: "Emerald peaks rise above sparkling mountain streams" },
+            "North Carolina": { theme: "Life", desc: "Vibrant towns bloom in verdant Carolina valleys" },
+            "South Carolina": { theme: "Romance", desc: "Lavender dreams weave through charming Southern nights" },
+            "Georgia": { theme: "Coca-Cola", desc: "Maroon logos blaze in Atlanta’s vibrant Coca-Cola legacy" },
+            "Florida": { theme: "Bright", desc: "Sunlit beaches shine with Florida’s golden radiance" },
+            "Wisconsin": { theme: "Winter", desc: "Icy winds dance across frost-kissed Northern plains" },
+            "Minnesota": { theme: "Winter", desc: "Icy winds dance across frost-kissed Northern plains" },
+            "Illinois": { theme: "Suburban", desc: "Olive suburbs thrive in the heartland’s embrace" },
+            "Mississippi": { theme: "Tornado", desc: "Stormy skies swirl over Mississippi’s resilient soul" },
+            "Indiana": { theme: "Roadway", desc: "Asphalt ribbons race through Indy’s open roads" },
+            "Kentucky": { theme: "Fried Chicken", desc: "Golden crispy bites savor Kentucky’s warm spirit" },
+            "Tennessee": { theme: "Music", desc: "Golden brown melodies strum through Nashville’s vibrant heart" },
+            "Kansas": { theme: "Barbecue", desc: "Smoky red sauce simmers in Kansas’ fiery pits" },
+            "Oklahoma": { theme: "Native American", desc: "Terracotta tales honor the land’s first voices" },
+            "Texas": { theme: "Cowboy", desc: "Saddle-brown trails blaze under vast Texan skies" },
+            "Montana": { theme: "Glacier", desc: "Pale blue glaciers carve Montana’s rugged majesty" },
+            "Wyoming": { theme: "Yellowstone", desc: "Golden geysers erupt in Yellowstone’s wild heart" },
+            "Missouri": { theme: "River", desc: "Pale green rivers flow through Missouri’s timeless plains" },
+            "Alaska": { theme: "Glacier", desc: "Steamy teal springs bubble in Alaska’s frozen wilds" },
+            "Alabama": { theme: "Civil Rights", desc: "Crimson courage marks Alabama’s fight for justice" },
+            "Louisiana": { theme: "Swamp", desc: "Murky green bayous hum with Cajun mystery" },
+            "North Dakota": { theme: "Theodore Roosevelt", desc: "Rugged brown Badlands honor a president’s legacy" },
+            "South Dakota": { theme: "Gold Rush", desc: "Red-gold hills gleam with Black Hills’ storied past" },
+            "Colorado": { theme: "Snow Mountain", desc: "Pristine white peaks tower over Colorado’s ranges" },
+            "New Mexico": { theme: "Pueblo", desc: "Adobe red pueblos stand proud in desert sun" },
+            "Idaho": { theme: "Mountain View", desc: "Pine green vistas frame Idaho’s soaring mountains" },
+            "Utah": { theme: "Mormonism", desc: "Pure white snow blankets Utah’s majestic slopes" },
+            "Nevada": { theme: "Desert", desc: "Sandy beige dunes shimmer in Nevada’s vast expanse" },
+            "Arizona": { theme: "Sun", desc: "Sunset red rocks glow under Arizona’s fiery skies" },
+            "Washington": { theme: "Technology", desc: "Silver circuits pulse in Washington’s tech frontier" },
+            "Oregon": { theme: "Sustainability", desc: "Earthy green forests thrive in Oregon’s eco-heart" },
+            "California": { theme: "Beach", desc: "Coastal blue waves crash along California’s shores" },
+            "Iowa": { theme: "Cornfield", desc: "Golden corn sways in Iowa’s endless fields" },
+            "Arkansas": { theme: "Hot Spring", desc: "Emerald Ozarks bloom with Arkansas’ wild beauty" },
+            "Nebraska": { theme: "Prairie", desc: "Warm brown prairies stretch across Nebraska’s plains" },
+            "Hawaii": { theme: "Tropical Coral", desc: "Coral reefs sparkle in Hawaii’s turquoise waters" }
+        };
+
+        // Define theme colors using hex codes for uniformity
+        const themeColors = {
+            "Maple Leaf": {
+                "Maine": "#DC143C",
+                "New Hampshire": "#00693E",
+                "Vermont": "#5A8562",
+                "Connecticut": "#B22222"
+            },
+            "Education": "#0000FF",
+            "Mansion": "#FFFFF0",
+            "Steel Iron": {
+                "New York": "#6A5ACD",
+                "New Jersey": "#D3D3D3",
+                "Pennsylvania": "#A9A9A9",
+                "Michigan": "#808080",
+                "Ohio": "#4682B4",
+                "Delaware": "#696969"
+            },
+            "Harbor": "#008080",
+            "Embassy": "#C0C0C0",
+            "Slave": "#F5F5DC",
+            "Mountain and Water": "#008000",
+            "Life": "#00FF00",
+            "Romance": "#E6E6FA",
+            "Coca-Cola": "#800000",
+            "Bright": "#FFFF00",
+            "Winter": {
+                "Wisconsin": "#DEB887",
+                "Minnesota": "#F0F8FF"
+            },
+            "Suburban": "#6B8E23",
+            "Tornado": "#778899",
+            "Roadway": "#000000",
+            "Fried Chicken": "#DAA520",
+            "Music": "#D5B87C",
+            "Barbecue": "#8B0000",
+            "Native American": "#A0522D",
+            "Cowboy": "#8B4513",
+            "Glacier": {
+                "Montana": "#FFFAFA",
+                "Alaska": "#F8F8FF"
+            },
+            "Yellowstone": "#FFFFE0",
+            "River": "#D6E3DA",
+            "Civil Rights": "#DC143C",
+            "Swamp": "#556B2F",
+            "Theodore Roosevelt": "#D2B48C",
+            "Gold Rush": "#CD5C5C",
+            "Snow Mountain": "#F5F5F5",
+            "Pueblo": "#FFB6C1",
+            "Mountain View": "#2E8B57",
+            "Mormonism": "#FFFFF0",
+            "Desert": "#F4A460",
+            "Sun": "#FF8C00",
+            "Technology": "#C0C0C0",
+            "Sustainability": "#32CD32",
+            "Beach": "#87CEEB",
+            "Cornfield": "#F0E68C",
+            "Hot Spring": "#00FFFF",
+            "Prairie": "#006400",
+            "Tropical Coral": "#40E0D0"
+        };
+
+        // State data for radar chart based on provided data
+        const cityData = {
+            "Montgomery": { state: "Alabama", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Huntsville": { state: "Alabama", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            
+            "Juneau": { state: "Alaska", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Anchorage": { state: "Alaska", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            
+            "Phoenix": { state: "Arizona", stats: { Safety: 3, Health: 3, Environment: 5, Transportation: 4, Museum: 3, Attraction: 4, Food: 4, Cleanliness: 5 } },
+            
+            "Little Rock": { state: "Arkansas", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            
+            "Sacramento": { state: "California", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Los Angeles": { state: "California", stats: { Safety: 4, Health: 3, Environment: 5, Transportation: 5, Museum: 5, Attraction: 5, Food: 5, Cleanliness: 1 } },
+            
+            "Denver": { state: "Colorado", stats: { Safety: 5, Health: 4, Environment: 5, Transportation: 5, Museum: 4, Attraction: 5, Food: 5, Cleanliness: 4 } },
+            
+            "Hartford": { state: "Connecticut", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Bridgeport": { state: "Connecticut", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            
+            "Dover": { state: "Delaware", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Wilmington": { state: "Delaware", stats: { Safety: 3, Health: 3, Environment: 3, Transportation: 3, Museum: 2, Attraction: 2, Food: 2, Cleanliness: 4 } },
+            
+            "Tallahassee": { state: "Florida", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Jacksonville": { state: "Florida", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            
+            "Atlanta": { state: "Georgia", stats: { Safety: 3, Health: 4, Environment: 4, Transportation: 5, Museum: 5, Attraction: 4, Food: 3, Cleanliness: 3 } },
+            
+            "Honolulu": { state: "Hawaii", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            
+            "Boise": { state: "Idaho", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            
+            "Springfield": { state: "Illinois", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Chicago": { state: "Illinois", stats: { Safety: 4, Health: 4, Environment: 5, Transportation: 5, Museum: 5, Attraction: 5, Food: 5, Cleanliness: 3 } },
+            
+            "Indianapolis": { state: "Indiana", stats: { Safety: 3, Health: 3, Environment: 5, Transportation: 4, Museum: 3, Attraction: 3, Food: 1, Cleanliness: 2 } },
+            
+            "Des Moines": { state: "Iowa", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            
+            "Topeka": { state: "Kansas", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Wichita": { state: "Kansas", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            
+            "Frankfort": { state: "Kentucky", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Louisville": { state: "Kentucky", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            
+            "Baton Rouge": { state: "Louisiana", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "New Orleans": { state: "Louisiana", stats: { Safety: 2, Health: 2, Environment: 5, Transportation: 4, Museum: 4, Attraction: 4, Food: 4, Cleanliness: 2 } },
+            
+            "Augusta": { state: "Maine", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Portland": { state: "Maine", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            
+            "Annapolis": { state: "Maryland", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            
+            "Baltimore": { state: "Maryland", stats: { Safety: 2, Health: 2, Environment: 4, Transportation: 5, Museum: 3, Attraction: 3, Food: 2, Cleanliness: 1 } },
+            "Boston": { state: "Massachusetts", stats: { Safety: 4, Health: 4, Environment: 5, Transportation: 5, Museum: 5, Attraction: 5, Food: 5, Cleanliness: 5 } },
+            
+            "Lansing": { state: "Michigan", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Detroit": { state: "Michigan", stats: { Safety: 2, Health: 2, Environment: 5, Transportation: 4, Museum: 2, Attraction: 2, Food: 2, Cleanliness: 2 } },
+            
+            "Saint Paul": { state: "Minnesota", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Minneapolis": { state: "Minnesota", stats: { Safety: 3, Health: 5, Environment: 5, Transportation: 4, Museum: 4, Attraction: 4, Food: 3, Cleanliness: 3 } },
+            
+            "Jackson": { state: "Mississippi", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            
+            "Jefferson City": { state: "Missouri", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Kansas City": { state: "Missouri", stats: { Safety: 1, Health: 4, Environment: 5, Transportation: 3, Museum: 4, Attraction: 3, Food: 4, Cleanliness: 3 } },
+            
+            "Helena": { state: "Montana", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Billings": { state: "Montana", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            
+            "Lincoln": { state: "Nebraska", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Omaha": { state: "Nebraska", stats: { Safety: 5, Health: 3, Environment: 3, Transportation: 3, Museum: 3, Attraction: 3, Food: 4, Cleanliness: 5 } },
+            
+            "Carson City": { state: "Nevada", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Las Vegas": { state: "Nevada", stats: { Safety: 4, Health: 3, Environment: 5, Transportation: 4, Museum: 3, Attraction: 5, Food: 5, Cleanliness: 3 } },
+            
+            "Concord": { state: "New Hampshire", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Manchester": { state: "New Hampshire", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            
+            "Trenton": { state: "New Jersey", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Newark": { state: "New Jersey", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            
+            "Santa Fe": { state: "New Mexico", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Albuquerque": { state: "New Mexico", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            
+            "Albany": { state: "New York", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "New York City": { state: "New York", stats: { Safety: 3, Health: 3, Environment: 3, Transportation: 5, Museum: 5, Attraction: 5, Food: 5, Cleanliness: 2 } },
+            
+            "Raleigh": { state: "North Carolina", stats: { Safety: 4, Health: 5, Environment: 3, Transportation: 3, Museum: 2, Attraction: 3, Food: 3, Cleanliness: 0 } },
+            "Charlotte": { state: "North Carolina", stats: { Safety: 2, Health: 4, Environment: 3, Transportation: 5, Museum: 2, Attraction: 2, Food: 3, Cleanliness: 3 } },
+            
+            "Bismarck": { state: "North Dakota", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Fargo": { state: "North Dakota", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            
+            "Columbus": { state: "Ohio", stats: { Safety: 4, Health: 3, Environment: 4, Transportation: 3, Museum: 4, Attraction: 3, Food: 4, Cleanliness: 4 } },
+            
+            "Oklahoma City": { state: "Oklahoma", stats: { Safety: 3, Health: 3, Environment: 5, Transportation: 3, Museum: 4, Attraction: 4, Food: 3, Cleanliness: 5 } },
+            
+            "Salem": { state: "Oregon", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Portland": { state: "Oregon", stats: { Safety: 3, Health: 4, Environment: 4, Transportation: 5, Museum: 3, Attraction: 4, Food: 4, Cleanliness: 2 } },
+            
+            "Harrisburg": { state: "Pennsylvania", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Philadelphia": { state: "Pennsylvania", stats: { Safety: 1, Health: 3, Environment: 4, Transportation: 5, Museum: 5, Attraction: 5, Food: 4, Cleanliness: 1 } },
+            
+            "Providence": { state: "Rhode Island", stats: { Safety: 4, Health: 5, Environment: 5, Transportation: 4, Museum: 2, Attraction: 3, Food: 2, Cleanliness: 4 } },
+            
+            "Columbia": { state: "South Carolina", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Charleston": { state: "South Carolina", stats: { Safety: 5, Health: 5, Environment: 5, Transportation: 4, Museum: 4, Attraction: 4, Food: 3, Cleanliness: 5 } },
+            
+            "Pierre": { state: "South Dakota", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Sioux Falls": { state: "South Dakota", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            
+            "Nashville": { state: "Tennessee", stats: { Safety: 2, Health: 4, Environment: 4, Transportation: 3, Museum: 4, Attraction: 3, Food: 4, Cleanliness: 3 } },
+            
+            "Austin": { state: "Texas", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Houston": { state: "Texas", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            
+            "Salt Lake City": { state: "Utah", stats: { Safety: 5, Health: 5, Environment: 5, Transportation: 5, Museum: 4, Attraction: 3, Food: 4, Cleanliness: 5 } },
+            
+            "Montpelier": { state: "Vermont", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Burlington": { state: "Vermont", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            
+            "Richmond": { state: "Virginia", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Virginia Beach": { state: "Virginia", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            
+            "Olympia": { state: "Virginia", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Seattle": { state: "Washington", stats: { Safety: 4, Health: 4, Environment: 5, Transportation: 5, Museum: 5, Attraction: 5, Food: 5, Cleanliness: 3 } },
+            
+            "Charleston": { state: "West Virginia", stats: { Safety: 2, Health: 1, Environment: 4, Transportation: 4, Museum: 2, Attraction: 3, Food: 2, Cleanliness: 5 } },
+            
+            "Madison": { state: "Wisconsin", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            "Milwaukee": { state: "Wisconsin", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } },
+            
+            "Cheyenne": { state: "Wyoming", stats: { Safety: 0, Health: 0, Environment: 0, Transportation: 0, Museum: 0, Attraction: 0, Food: 0, Cleanliness: 0 } }
+        };
+
+        // Style function for states
+        function style(feature) {
+            const stateName = feature.properties.name;
+            const themeData = stateThemes[stateName] || { theme: "Default", desc: "No theme assigned" };
+            const theme = themeData.theme;
+            let fillColor = themeColors[theme] || '#CCCCCC';
+            if (typeof fillColor === 'object') {
+                fillColor = fillColor[stateName] || '#CCCCCC';
+            }
+            return {
+                fillColor: fillColor,
+                weight: 2,
+                opacity: 1,
+                color: '#FFFFFF',
+                fillOpacity: 0.7
+            };
+        }
+
+        // Highlight feature on hover
+        function highlightFeature(e) {
+            const layer = e.target;
+            layer.setStyle({
+                weight: 5,
+                color: '#808080',
+                fillOpacity: 0.9
+            });
+            info.update(layer.feature.properties);
+        }
+
+        // Reset highlight on mouseout
+        function resetHighlight(e) {
+            geojson.resetStyle(e.target);
+            info.update();
+        }
+
+        // Show popup on click for states
+        function zoomToFeature(e) {
+            const layer = e.target;
+            map.fitBounds(layer.getBounds());
+            const stateName = layer.feature.properties.name;
+            const themeData = stateThemes[stateName] || { theme: "Default", desc: "No theme assigned" };
+            layer.bindPopup(`<b>${stateName}</b><br>${themeData.desc}`).openPopup();
+        }
+
+        // Add event listeners to each feature
+        function onEachFeature(feature, layer) {
+            layer.on({
+                mouseover: highlightFeature,
+                mouseout: resetHighlight,
+                click: zoomToFeature
+            });
+        }
+
+        // Load external GeoJSON and add to map
+        let geojson;
+        d3.json('https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json').then(function(data) {
+            data.features.forEach(feature => {
+                const stateName = feature.properties.name;
+                if (stateThemes[stateName]) {
+                    feature.properties.theme = stateThemes[stateName].theme;
+                    feature.properties.desc = stateThemes[stateName].desc;
+                } else {
+                    feature.properties.theme = "Default";
+                    feature.properties.desc = "No theme assigned";
+                }
+            });
+
+            geojson = L.geoJson(data, {
+                style: style,
+                onEachFeature: onEachFeature
+            }).addTo(map);
+        });
+
+        // Info control
+        const info = L.control();
+        info.onAdd = function (map) {
+            this._div = L.DomUtil.create('div', 'info');
+            this.update();
+            return this._div;
+        };
+        info.update = function (props) {
+            this._div.innerHTML = '<h4>US State Info</h4>' + (props ?
+                `<b>${props.name}</b><br>Theme: ${props.theme}<br>${props.desc}` :
+                'Hover over a state');
+        };
+        info.addTo(map);
+
+        // Reset zoom control with modern home icon
+        const resetZoomControl = L.control({ position: 'bottomleft' });
+        resetZoomControl.onAdd = function (map) {
+            const div = L.DomUtil.create('div', 'leaflet-control-reset-zoom');
+            div.innerHTML = '<button title="Reset Zoom" onclick="map.setView([37.8, -96], 4)"><i class="fas fa-home"></i></button>';
+            return div;
+        };
+        resetZoomControl.addTo(map);
+
+        // Function to create radar chart
+        function createRadarChart(cityName, canvasId) {
+            const data = cityData[cityName]?.stats || {
+                Safety: 0,
+                Health: 0,
+                Environment: 0,
+                Transportation: 0,
+                Museum: 0,
+                Attraction: 0,
+                Food: 0,
+                Cleanliness: 0
+            };
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Safety', 'Health', 'Environment', 'Transportation', 'Museum', 'Attraction', 'Food', 'Cleanliness'],
+                    datasets: [{
+                        label: cityName,
+                        data: [
+                            data.Safety,
+                            data.Health,
+                            data.Environment,
+                            data.Transportation,
+                            data.Museum,
+                            data.Attraction,
+                            data.Food,
+                            data.Cleanliness
+                        ],
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 5,
+                            ticks: { stepSize: 1 }
+                        }
+                    },
+                    responsive: true,
+                    maintainAspectRatio: true
+                }
+            });
+        }
+
+        // Modified capitals layer with unique popup IDs and no auto-close
+        const capitals = L.layerGroup();
+        const capitalMarkers = [
+            { state: "Maine", coords: [44.3683, -69.7910], name: "Augusta, ME" },
+            { state: "New Hampshire", coords: [43.2078, -71.5376], name: "Concord, NH" },
+            { state: "Vermont", coords: [44.2601, -72.5754], name: "Montpelier, VT" },
+            { state: "Connecticut", coords: [41.7637, -72.6851], name: "Hartford, CT" },
+            { state: "Massachusetts", coords: [42.3601, -71.0589], name: "Boston, MA" },
+            { state: "Rhode Island", coords: [41.8240, -71.4128], name: "Providence, RI" },
+            { state: "New York", coords: [42.6526, -73.7562], name: "Albany, NY" },
+            { state: "New Jersey", coords: [40.2204, -74.7597], name: "Trenton, NJ" },
+            { state: "Pennsylvania", coords: [40.2732, -76.8867], name: "Harrisburg, PA" },
+            { state: "Michigan", coords: [42.8864, -84.5555], name: "Lansing, MI" },
+            { state: "Ohio", coords: [39.9612, -82.9988], name: "Columbus, OH" },
+            { state: "Delaware", coords: [39.1582, -75.5244], name: "Dover, DE" },
+            { state: "Maryland", coords: [38.9847, -76.4922], name: "Annapolis, MD" },
+            { state: "District of Columbia", coords: [38.9072, -77.0369], name: "Washington, DC" },
+            { state: "Virginia", coords: [37.5407, -77.4360], name: "Richmond, VA" },
+            { state: "West Virginia", coords: [38.3498, -81.6326], name: "Charleston, WV" },
+            { state: "North Carolina", coords: [35.7596, -79.0193], name: "Raleigh, NC" },
+            { state: "South Carolina", coords: [34.0007, -81.0348], name: "Columbia, SC" },
+            { state: "Georgia", coords: [33.7490, -84.3880], name: "Atlanta, GA" },
+            { state: "Florida", coords: [30.4383, -84.2807], name: "Tallahassee, FL" },
+            { state: "Wisconsin", coords: [43.0731, -89.4012], name: "Madison, WI" },
+            { state: "Minnesota", coords: [44.9778, -93.2650], name: "Saint Paul, MN" },
+            { state: "Illinois", coords: [39.7984, -89.6548], name: "Springfield, IL" },
+            { state: "Mississippi", coords: [32.2988, -90.1848], name: "Jackson, MS" },
+            { state: "Indiana", coords: [39.7684, -86.1581], name: "Indianapolis, IN" },
+            { state: "Kentucky", coords: [38.2009, -84.8733], name: "Frankfort, KY" },
+            { state: "Tennessee", coords: [36.1627, -86.7816], name: "Nashville, TN" },
+            { state: "Kansas", coords: [39.0489, -95.6780], name: "Topeka, KS" },
+            { state: "Oklahoma", coords: [35.4676, -97.5164], name: "Oklahoma City, OK" },
+            { state: "Texas", coords: [30.2749, -97.7404], name: "Austin, TX" },
+            { state: "Montana", coords: [46.5891, -112.0391], name: "Helena, MT" },
+            { state: "Wyoming", coords: [41.1400, -104.8202], name: "Cheyenne, WY" },
+            { state: "Missouri", coords: [38.5767, -92.1735], name: "Jefferson City, MO" },
+            { state: "Alaska", coords: [58.3019, -134.4197], name: "Juneau, AK" },
+            { state: "Alabama", coords: [32.3668, -86.3000], name: "Montgomery, AL" },
+            { state: "Louisiana", coords: [30.6954, -91.1561], name: "Baton Rouge, LA" },
+            { state: "North Dakota", coords: [46.8083, -100.7837], name: "Bismarck, ND" },
+            { state: "South Dakota", coords: [44.3668, -100.3538], name: "Pierre, SD" },
+            { state: "Colorado", coords: [39.7392, -104.9903], name: "Denver, CO" },
+            { state: "New Mexico", coords: [35.6860, -105.9378], name: "Santa Fe, NM" },
+            { state: "Idaho", coords: [43.6150, -116.2023], name: "Boise, ID" },
+            { state: "Utah", coords: [40.7608, -111.8910], name: "Salt Lake City, UT" },
+            { state: "Nevada", coords: [39.1638, -119.7674], name: "Carson City, NV" },
+            { state: "Arizona", coords: [33.4484, -112.0740], name: "Phoenix, AZ" },
+            { state: "Washington", coords: [47.0505, -122.9007], name: "Olympia, WA" },
+            { state: "Oregon", coords: [44.9429, -123.0351], name: "Salem, OR" },
+            { state: "California", coords: [38.5767, -121.4944], name: "Sacramento, CA" },
+            { state: "Iowa", coords: [41.6028, -93.6091], name: "Des Moines, IA" },
+            { state: "Arkansas", coords: [34.7465, -92.2896], name: "Little Rock, AR" },
+            { state: "Nebraska", coords: [40.8136, -96.7026], name: "Lincoln, NE" },
+            { state: "Hawaii", coords: [21.3069, -157.8583], name: "Honolulu, HI" }
+        ];
+
+        capitalMarkers.forEach((marker, index) => {
+            const canvasId = `radar-chart-${index}`;
+            const popupContent = `
+                <b>${marker.name}</b><br>
+                <canvas id="${canvasId}" class="radar-chart"></canvas>
+            `;
+            const markerLayer = L.marker(marker.coords)
+                .bindPopup(popupContent, { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => {
+                    // Create radar chart after popup is opened
+                    setTimeout(() => createRadarChart(marker.name.split(', ')[0], canvasId), 0);
+                });
+            capitals.addLayer(markerLayer);
+        });
+
+        const mega_cities = L.layerGroup([
+            L.marker([40.7128, -74.0060]).bindPopup('<b>New York City, NY</b><br><canvas id="radar-chart-mega-0" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('New York City', 'radar-chart-mega-0'), 0)),
+            L.marker([34.0522, -118.3637]).bindPopup('<b>Los Angeles, CA</b><br><canvas id="radar-chart-mega-1" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Los Angeles', 'radar-chart-mega-1'), 0)),
+            L.marker([41.8781, -87.8900]).bindPopup('<b>Chicago, IL</b><br><canvas id="radar-chart-mega-2" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Chicago', 'radar-chart-mega-2'), 0)),
+            L.marker([29.7650, -95.3761]).bindPopup('<b>Houston, TX</b><br><canvas id="radar-chart-mega-3" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Houston', 'radar-chart-mega-3'), 0)),
+            L.marker([33.4482, -112.0777]).bindPopup('<b>Phoenix, AZ</b><br><canvas id="radar-chart-mega-4" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Phoenix', 'radar-chart-mega-4'), 0)),
+            L.marker([39.9526, -75.1652]).bindPopup('<b>Philadelphia, PA</b><br><canvas id="radar-chart-mega-5" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Philadelphia', 'radar-chart-mega-5'), 0))
+        ]);
+
+        const major_cities = L.layerGroup([
+            L.marker([33.5207, -86.8025]).bindPopup('<b>Birmingham, AL</b><br><canvas id="radar-chart-major-0" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Birmingham', 'radar-chart-major-0'), 0)),
+            L.marker([61.2181, -149.9003]).bindPopup('<b>Anchorage, AK</b><br><canvas id="radar-chart-major-1" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Anchorage', 'radar-chart-major-1'), 0)),
+            L.marker([34.0522, -118.2437]).bindPopup('<b>Los Angeles, CA</b><br><canvas id="radar-chart-major-2" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Los Angeles', 'radar-chart-major-2'), 0)),
+            L.marker([39.7392, -104.9903]).bindPopup('<b>Denver, CO</b><br><canvas id="radar-chart-major-3" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Denver', 'radar-chart-major-3'), 0)),
+            L.marker([41.1792, -73.1894]).bindPopup('<b>Bridgeport, CT</b><br><canvas id="radar-chart-major-4" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Bridgeport', 'radar-chart-major-4'), 0)),
+            L.marker([39.7459, -75.5466]).bindPopup('<b>Wilmington, DE</b><br><canvas id="radar-chart-major-5" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Wilmington', 'radar-chart-major-5'), 0)),
+            L.marker([25.7617, -80.1918]).bindPopup('<b>Miami, FL</b><br><canvas id="radar-chart-major-6" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Miami', 'radar-chart-major-6'), 0)),
+            L.marker([33.7490, -84.3880]).bindPopup('<b>Atlanta, GA</b><br><canvas id="radar-chart-major-7" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Atlanta', 'radar-chart-major-7'), 0)),
+            L.marker([21.3069, -157.8583]).bindPopup('<b>Honolulu, HI</b><br><canvas id="radar-chart-major-8" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Honolulu', 'radar-chart-major-8'), 0)),
+            L.marker([43.6150, -116.2023]).bindPopup('<b>Boise, ID</b><br><canvas id="radar-chart-major-9" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Boise', 'radar-chart-major-9'), 0)),
+            L.marker([41.8781, -87.6298]).bindPopup('<b>Chicago, IL</b><br><canvas id="radar-chart-major-10" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Chicago', 'radar-chart-major-10'), 0)),
+            L.marker([39.7684, -86.1581]).bindPopup('<b>Indianapolis, IN</b><br><canvas id="radar-chart-major-11" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Indianapolis', 'radar-chart-major-11'), 0)),
+            L.marker([41.6005, -93.6091]).bindPopup('<b>Des Moines, IA</b><br><canvas id="radar-chart-major-12" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Des Moines', 'radar-chart-major-12'), 0)),
+            L.marker([37.6872, -97.3301]).bindPopup('<b>Wichita, KS</b><br><canvas id="radar-chart-major-13" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Wichita', 'radar-chart-major-13'), 0)),
+            L.marker([38.2527, -85.7585]).bindPopup('<b>Louisville, KY</b><br><canvas id="radar-chart-major-14" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Louisville', 'radar-chart-major-14'), 0)),
+            L.marker([29.9511, -90.0715]).bindPopup('<b>New Orleans, LA</b><br><canvas id="radar-chart-major-15" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('New Orleans', 'radar-chart-major-15'), 0)),
+            L.marker([43.6615, -70.2553]).bindPopup('<b>Portland, ME</b><br><canvas id="radar-chart-major-16" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Portland', 'radar-chart-major-16'), 0)),
+            L.marker([39.2904, -76.6122]).bindPopup('<b>Baltimore, MD</b><br><canvas id="radar-chart-major-17" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Baltimore', 'radar-chart-major-17'), 0)),
+            L.marker([42.3314, -83.0458]).bindPopup('<b>Detroit, MI</b><br><canvas id="radar-chart-major-18" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Detroit', 'radar-chart-major-18'), 0)),
+            L.marker([44.9778, -93.2650]).bindPopup('<b>Minneapolis, MN</b><br><canvas id="radar-chart-major-19" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Minneapolis', 'radar-chart-major-19'), 0)),
+            L.marker([32.2988, -90.1848]).bindPopup('<b>Jackson, MS</b><br><canvas id="radar-chart-major-20" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Jackson', 'radar-chart-major-20'), 0)),
+            L.marker([39.0997, -94.5786]).bindPopup('<b>Kansas City, MO</b><br><canvas id="radar-chart-major-21" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Kansas City', 'radar-chart-major-21'), 0)),
+            L.marker([45.7833, -108.5007]).bindPopup('<b>Billings, MT</b><br><canvas id="radar-chart-major-22" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Billings', 'radar-chart-major-22'), 0)),
+            L.marker([41.2565, -95.9345]).bindPopup('<b>Omaha, NE</b><br><canvas id="radar-chart-major-23" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Omaha', 'radar-chart-major-23'), 0)),
+            L.marker([36.1699, -115.1398]).bindPopup('<b>Las Vegas, NV</b><br><canvas id="radar-chart-major-24" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Las Vegas', 'radar-chart-major-24'), 0)),
+            L.marker([42.9956, -71.4548]).bindPopup('<b>Manchester, NH</b><br><canvas id="radar-chart-major-25" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Manchester', 'radar-chart-major-25'), 0)),
+            L.marker([40.7357, -74.1724]).bindPopup('<b>Newark, NJ</b><br><canvas id="radar-chart-major-26" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Newark', 'radar-chart-major-26'), 0)),
+            L.marker([35.0844, -106.6504]).bindPopup('<b>Albuquerque, NM</b><br><canvas id="radar-chart-major-27" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Albuquerque', 'radar-chart-major-27'), 0)),
+            L.marker([35.2271, -80.8431]).bindPopup('<b>Charlotte, NC</b><br><canvas id="radar-chart-major-28" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Charlotte', 'radar-chart-major-28'), 0)),
+            L.marker([46.8772, -96.7898]).bindPopup('<b>Fargo, ND</b><br><canvas id="radar-chart-major-29" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Fargo', 'radar-chart-major-29'), 0)),
+            L.marker([35.4676, -97.5164]).bindPopup('<b>Oklahoma City, OK</b><br><canvas id="radar-chart-major-30" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Oklahoma City', 'radar-chart-major-30'), 0)),
+            L.marker([45.5230, -122.6765]).bindPopup('<b>Portland, OR</b><br><canvas id="radar-chart-major-31" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Portland', 'radar-chart-major-31'), 0)),
+            L.marker([43.5446, -96.7311]).bindPopup('<b>Sioux Falls, SD</b><br><canvas id="radar-chart-major-32" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Sioux Falls', 'radar-chart-major-32'), 0)),
+            L.marker([47.6062, -122.3321]).bindPopup('<b>Seattle, WA</b><br><canvas id="radar-chart-major-33" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Seattle', 'radar-chart-major-33'), 0)),
+            L.marker([43.0389, -87.9065]).bindPopup('<b>Milwaukee, WI</b><br><canvas id="radar-chart-major-34" class="radar-chart"></canvas>', { maxWidth: 300, autoClose: false, closeOnClick: false })
+                .on('popupopen', () => setTimeout(() => createRadarChart('Milwaukee', 'radar-chart-major-34'), 0))
+        ]);
+
+        // Layer control
+        const overlayLayers = {
+            "State Capitals": capitals,
+            "Mega Cities": mega_cities,
+            "Major Cities": major_cities
+        };
+
+        L.control.layers(null, overlayLayers).addTo(map);
+
+        // Add layers to map by default
+        capitals.addTo(map);
+        mega_cities.addTo(map);
+        major_cities.addTo(map);
+    </script>
+</body>
+</html>
